@@ -1,0 +1,91 @@
+<!-- IT IS NOT RECOMMENDED TO CALL THE API DIRECTLY FROM THE CLIENT, YOUR API KEY WILL BE EXPOSED -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    </head>
+    <body>
+        <label for="name">username:</label>
+        <input id="name" name="name" type="text" value="joe" placeholder="your name here" />
+        <hr/>
+        <label for="name">message:</label>
+        <input id="user-input" name="user-input" type="text" placeholder="Enter your response..."/>
+        <button id="send" type="button">Send</button>
+        <ul id="root"></ul>
+
+        <script defer>
+            const API_KEY = "VF.DM.6613cb72d5bfe5a34145e723.p0Jw2UqmstkWQDWb"; // it should look like this: VF.DM.XXXXXXX.XXXXXX... keep this a secret!
+        
+            const interact = (request) =>
+                // call the voiceflow api with the user's name & request, get back a response
+                fetch(`https://general-runtime.voiceflow.com/state/user/${encodeURI($("#name").val())}/interact`, {
+                    method: 'POST',
+                    headers: { Authorization: API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request }),
+                })
+                .then((res) => res.json())
+                .then((trace) => {
+                    console.log("API RESPONSE BODY:", trace);
+                    trace.forEach((trace) => {
+                        if (trace.type === 'speak' || trace.type === 'text') {
+                            $("#root").append(`<li>${trace.payload.message}</li>`)
+                        } else if (trace.type === 'choice') {
+                            // Display "yes" and "no" options as buttons
+                            $("#root").append(`
+                                <li>
+                                    <button onclick="handleChoice('yes')">Yes</button>
+                                    <button onclick="handleChoice('no')">No</button>
+                                </li>
+                            `);
+                        } else if (trace.type === 'end') {
+                            $("#root").append(`<li><b>The End!</b></li>`)
+                        }
+                    });
+                })
+        
+            // Call an Interaction Method to advance the conversation based on `userInput`.
+            interact({ type: 'launch' });
+        
+            // Function to handle user choice (yes or no)
+            function handleChoice(choice) {
+                // Display the user's choice in the chat interface
+                $("#root").append(`<li> > ${choice}</li>`);
+                
+                // Send the user's choice back to the bot
+                interact({ type: 'text', payload: choice });
+        
+                // Check the user's choice
+                if (choice === 'yes') {
+                    // If user chooses "Yes", display a thank you message
+                    $("#root").append(`<li>Thank you for using the chat bot.</li>`);
+                } else if (choice === 'no') {
+                    // If user chooses "No", prompt the user to enter a query in detail
+                    const userInput = prompt("Please enter your query in detail:");
+                    if (userInput) {
+                        // Send the user's detailed query back to the bot
+                        interact({ type: 'text', payload: userInput });
+                        // Display the user's detailed query in the chat interface
+                        $("#root").append(`<li> > ${userInput}</li>`);
+                    }
+                }
+            }
+        
+            // Click handler - This advances the conversation session
+            async function handleSend() {
+                // Get the user's response to the VF App's dialogue
+                const userInput = $("#user-input").val();
+                $("#root").append(`<li> > ${userInput}</li>`)
+                // clear the input field
+                $("#user-input").val('');
+        
+                // Call an Interaction Method to advance the conversation based on `userInput`.
+                interact({ type: 'text', payload: userInput });
+            }
+        
+            // Register the click handler on a button
+            $("#send").on("click", handleSend);
+        </script>
+        
+        
+    </body>
+</html>

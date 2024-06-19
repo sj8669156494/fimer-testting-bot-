@@ -1,91 +1,165 @@
-<!-- IT IS NOT RECOMMENDED TO CALL THE API DIRECTLY FROM THE CLIENT, YOUR API KEY WILL BE EXPOSED -->
 <!DOCTYPE html>
-<html>
-    <head>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    </head>
-    <body>
-        <label for="name">username:</label>
-        <input id="name" name="name" type="text" value="joe" placeholder="your name here" />
-        <hr/>
-        <label for="name">message:</label>
-        <input id="user-input" name="user-input" type="text" placeholder="Enter your response..."/>
-        <button id="send" type="button">Send</button>
-        <ul id="root"></ul>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chatBot">
+        <header>
+            <h2>ChatBot</h2>
+            <span alt="Close" id="cross" onclick="cancel()">X</span>
+        </header>
+        <ul class="chatbox" id="chatbox">
+            <!-- Bot's greeting message will be added here -->
+        </ul>
+        <div class="chat-input">
+            <textarea rows="2" cols="17" id="userInput" placeholder="Enter your name..."></textarea>
+            <button id="sendNameBTN" onclick="sendName()">Next</button>
+        </div>
+    </div>
+    <script>
+        let userName = '';
+        let userEmail = '';
 
-        <script defer>
-            const API_KEY = "VF.DM.6613cb72d5bfe5a34145e723.p0Jw2UqmstkWQDWb"; // it should look like this: VF.DM.XXXXXXX.XXXXXX... keep this a secret!
-        
-            const interact = (request) =>
-                // call the voiceflow api with the user's name & request, get back a response
-                fetch(`https://general-runtime.voiceflow.com/state/user/${encodeURI($("#name").val())}/interact`, {
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatbox = document.getElementById('chatbox');
+
+            // Bot's greeting message
+            const botGreeting = document.createElement('li');
+            botGreeting.classList.add('chat-incoming', 'chat');
+            botGreeting.innerHTML = `<p>Hi, I'm your assistant. What's your name?</p>`;
+            chatbox.appendChild(botGreeting);
+        });
+
+        function sendName() {
+            userName = document.getElementById('userInput').value.trim();
+            if (!userName) return;
+
+            // Display user's name
+            const userMessageElement = document.createElement('li');
+            userMessageElement.classList.add('chat-outgoing', 'chat');
+            userMessageElement.innerHTML = `<p>${userName}</p>`;
+            chatbox.appendChild(userMessageElement);
+
+            // Clear user input
+            document.getElementById('userInput').value = '';
+
+            // Ask for email next
+            const botMessageElement = document.createElement('li');
+            botMessageElement.classList.add('chat-incoming', 'chat');
+            botMessageElement.innerHTML = `<p>Hi ${userName}, what's your email?</p>`;
+            chatbox.appendChild(botMessageElement);
+
+            // Change input and button for email
+            document.getElementById('userInput').setAttribute('placeholder', 'Enter your email...');
+            document.getElementById('sendNameBTN').setAttribute('onclick', 'sendEmail()');
+        }
+
+        function sendEmail() {
+            userEmail = document.getElementById('userInput').value.trim();
+            if (!userEmail) return;
+
+            // Display user's email
+            const userMessageElement = document.createElement('li');
+            userMessageElement.classList.add('chat-outgoing', 'chat');
+            userMessageElement.innerHTML = `<p>${userEmail}</p>`;
+            chatbox.appendChild(userMessageElement);
+
+            // Clear user input
+            document.getElementById('userInput').value = '';
+
+            // Ask for the issue
+            const botMessageElement = document.createElement('li');
+            botMessageElement.classList.add('chat-incoming', 'chat');
+            botMessageElement.innerHTML = `<p>What is the issue you're facing?</p>`;
+            chatbox.appendChild(botMessageElement);
+
+            // Change input and button for issue
+            document.getElementById('userInput').setAttribute('placeholder', 'Describe your issue...');
+            document.getElementById('sendNameBTN').setAttribute('onclick', 'sendIssue()');
+        }
+
+        async function sendIssue() {
+            const apiUrl = "https://api.stack-ai.com/inference/v0/run/2635e8a0-f849-46f3-8f9a-398fabaf606e/6671981eee24252807616465";
+            const headers = {
+                'Authorization': 'Bearer da5eae17-ef04-4c25-babe-139e4da21a60',
+                'Content-Type': 'application/json'
+            };
+
+            const userInput = document.getElementById('userInput').value.trim();
+            if (!userInput) return;
+
+            // Display user's issue
+            const userMessageElement = document.createElement('li');
+            userMessageElement.classList.add('chat-outgoing', 'chat');
+            userMessageElement.innerHTML = `<p>${userInput}</p>`;
+            chatbox.appendChild(userMessageElement);
+
+            // Clear user input
+            document.getElementById('userInput').value = '';
+
+            // API call to Stack AI
+            const body = {
+                'user_name': userName,
+                'user_email': userEmail,
+                'user_query': userInput
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: { Authorization: API_KEY, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ request }),
-                })
-                .then((res) => res.json())
-                .then((trace) => {
-                    console.log("API RESPONSE BODY:", trace);
-                    trace.forEach((trace) => {
-                        if (trace.type === 'speak' || trace.type === 'text') {
-                            $("#root").append(`<li>${trace.payload.message}</li>`)
-                        } else if (trace.type === 'choice') {
-                            // Display "yes" and "no" options as buttons
-                            $("#root").append(`
-                                <li>
-                                    <button onclick="handleChoice('yes')">Yes</button>
-                                    <button onclick="handleChoice('no')">No</button>
-                                </li>
-                            `);
-                        } else if (trace.type === 'end') {
-                            $("#root").append(`<li><b>The End!</b></li>`)
-                        }
-                    });
-                })
-        
-            // Call an Interaction Method to advance the conversation based on `userInput`.
-            interact({ type: 'launch' });
-        
-            // Function to handle user choice (yes or no)
-            function handleChoice(choice) {
-                // Display the user's choice in the chat interface
-                $("#root").append(`<li> > ${choice}</li>`);
-                
-                // Send the user's choice back to the bot
-                interact({ type: 'text', payload: choice });
-        
-                // Check the user's choice
-                if (choice === 'yes') {
-                    // If user chooses "Yes", display a thank you message
-                    $("#root").append(`<li>Thank you for using the chat bot.</li>`);
-                } else if (choice === 'no') {
-                    // If user chooses "No", prompt the user to enter a query in detail
-                    const userInput = prompt("Please enter your query in detail:");
-                    if (userInput) {
-                        // Send the user's detailed query back to the bot
-                        interact({ type: 'text', payload: userInput });
-                        // Display the user's detailed query in the chat interface
-                        $("#root").append(`<li> > ${userInput}</li>`);
-                    }
+                    headers: headers,
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
+
+                const data = await response.json();
+
+                // Display bot's response
+                const botMessageElement = document.createElement('li');
+                botMessageElement.classList.add('chat-incoming', 'chat');
+                botMessageElement.innerHTML = `<p>${JSON.stringify(data)}</p>`;
+                chatbox.appendChild(botMessageElement);
+
+                // Offer resolution options (assuming data includes resolution details)
+                const resolutionOptions = document.createElement('div');
+                resolutionOptions.classList.add('resolution-options');
+                resolutionOptions.innerHTML = `
+                    <button onclick="handleResolution('yes')">Yes</button>
+                    <button onclick="handleResolution('no')">No</button>
+                `;
+                chatbox.appendChild(resolutionOptions);
+
+            } catch (error) {
+                console.error('Error:', error.message);
             }
-        
-            // Click handler - This advances the conversation session
-            async function handleSend() {
-                // Get the user's response to the VF App's dialogue
-                const userInput = $("#user-input").val();
-                $("#root").append(`<li> > ${userInput}</li>`)
-                // clear the input field
-                $("#user-input").val('');
-        
-                // Call an Interaction Method to advance the conversation based on `userInput`.
-                interact({ type: 'text', payload: userInput });
+        }
+
+        function handleResolution(response) {
+            const chatbox = document.getElementById('chatbox');
+            if (response === 'yes') {
+                const thankYouMessage = document.createElement('li');
+                thankYouMessage.classList.add('chat-incoming', 'chat');
+                thankYouMessage.innerHTML = `<p>Thanks for using our bot!</p>`;
+                chatbox.appendChild(thankYouMessage);
+            } else if (response === 'no') {
+                const askAgainMessage = document.createElement('li');
+                askAgainMessage.classList.add('chat-incoming', 'chat');
+                askAgainMessage.innerHTML = `<p>What is the issue again? Please describe.</p>`;
+                chatbox.appendChild(askAgainMessage);
+                // Allow user to input issue again and repeat the process
             }
-        
-            // Register the click handler on a button
-            $("#send").on("click", handleSend);
-        </script>
-        
-        
-    </body>
+        }
+
+        function cancel() {
+            // Close the chatbot or perform any desired action
+        }
+    </script>
+</body>
 </html>
